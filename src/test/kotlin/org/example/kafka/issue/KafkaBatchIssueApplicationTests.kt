@@ -10,17 +10,18 @@ import org.springframework.kafka.core.KafkaTemplate
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.future.asDeferred
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 class KafkaBatchIssueApplicationTests(
-    private val kafkaTemplate: KafkaTemplate<String, KafkaMessage>,
+    private val kafkaTemplate: KafkaTemplate<String, String>,
     private val rawMessageConsumer: RawMessageConsumer,
     private val consumerRecordMessageConsumer: ConsumerRecordMessageConsumer
 ) : SpringTest({
-
     beforeSpec {
         (1..10).map {
             val message = KafkaMessage("message-$it")
-            kafkaTemplate.send("batch-issue-topic", message).asDeferred()
+            kafkaTemplate.send("batch-issue-topic", Json.encodeToString(message)).asDeferred()
 
         }.awaitAll()
     }
@@ -28,7 +29,7 @@ class KafkaBatchIssueApplicationTests(
     "RawMessageConsumer should not consume any messages" {
         // Since the consumers are not configured properly they should not consume any messages and inform about error.
         // Unfortunately RawMessageConsumer is consuming single message, rest of them are lost and there is no information about it.
-        continually(continuallyConfig { initialDelay = 5.seconds; duration = 5.seconds },) {
+        continually(continuallyConfig { initialDelay = 3.seconds; duration = 5.seconds },) {
             assertSoftly {
                 withClue("[RawMessagesConsumer] should not consume any messages") {
                     rawMessageConsumer.consumedMessages().shouldHaveSize(0)
@@ -38,7 +39,7 @@ class KafkaBatchIssueApplicationTests(
     }
 
     "ConsumerRecordMessageConsumer should not consume any messages" {
-        continually(continuallyConfig { initialDelay = 5.seconds; duration = 5.seconds },) {
+        continually(continuallyConfig { initialDelay = 3.seconds; duration = 5.seconds },) {
             assertSoftly {
                 withClue("[ConsumerRecordMessageConsumer] should not consume any messages") {
                     consumerRecordMessageConsumer.consumedMessages().shouldHaveSize(0)
@@ -47,6 +48,3 @@ class KafkaBatchIssueApplicationTests(
         }
     }
 })
-
-
-
